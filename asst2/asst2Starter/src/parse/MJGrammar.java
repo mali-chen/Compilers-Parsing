@@ -120,6 +120,20 @@ public class MJGrammar implements MessageObject, FilePosObject
     //================================================================
 
     //: <stmt> ::= <assign> `; => pass
+    //: <stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
+    public Stmt newIf(int pos, Exp e, Stmt s1, Stmt s2){
+        return new If(pos, e, s1, s2);
+    }
+
+    //: <stmt> ::= # `while `( <expr> `) <stmt> =>
+    public Stmt newWhile(int pos, Exp e, Stmt s){
+        return new While(pos, e, s);
+    }
+
+    //: <stmt> ::= `; =>
+    public Stmt emptyStmt(){
+        return new Block(0, new StmtList());
+    }
 
     //: <stmt> ::= # `{ <stmt>* `} =>
     public Stmt newBlock(int pos, List<Stmt> sl)
@@ -148,9 +162,35 @@ public class MJGrammar implements MessageObject, FilePosObject
 
     // these precedence levels have not been filled in at all, so there
     // are only pass-through productions
-    //: <expr8> ::= <expr7> => pass
+    //: <expr7> ::= <expr7> # `&& <expr6> =>
+    public Exp newAnd(Exp e1, int pos, Exp e2)
+    {
+        return new And(pos, e1, e2);
+    }
+
     //: <expr7> ::= <expr6> => pass
+
+    //: <expr8> ::= <expr8> # `|| <expr7> =>
+    public Exp newOr(Exp e1, int pos, Exp e2)
+    {
+        return new Or(pos, e1, e2);
+    }
+
+    //: <expr8> ::= <expr7> => pass
     //: <expr6> ::= <expr5> => pass
+    //: <expr6> ::= <expr6> # `== <expr5> =>
+    public Exp newEquals(Exp e1, int pos, Exp e2)
+    {
+        return new Equals(pos, e1, e2);
+    }
+
+    //: <expr6> ::= <expr5> => pass
+
+    //: <expr5> ::= <expr5> # `< <expr4> =>
+    public Exp newLess(Exp e1, int pos, Exp e2){
+        return new LessThan(pos, e1, e2);
+    }
+
     //: <expr5> ::= <expr4> => pass
 
     // these remaining precedence levels have been filled in to some extent,
