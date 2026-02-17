@@ -1,6 +1,7 @@
 package parse;
 import java.util.List;
 import errorMsg.*;
+import java.lang.reflect.Field;
 import syntaxtree.*;
 import wrangLR.runtime.MessageObject;
 import wrangLR.runtime.FilePosObject;
@@ -82,6 +83,13 @@ public class MJGrammar implements MessageObject, FilePosObject
     {
         return new ClassDecl(pos, name, "Object", new DeclList(vec));
     }
+    
+    // extends
+    //: <class decl> ::= `class # ID `extends ID `{ <decl in class>* `} =>
+    public ClassDecl createClassDeclExt(int pos, String name, String superName, List<Decl> vec)
+    {
+        return new ClassDecl(pos, name, superName, new DeclList(vec));
+    }
 
     //: <decl in class> ::= <method decl> => pass
     //: <delc in class> ::= <field decl> => pass
@@ -139,19 +147,38 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <stmt> ::= <assign> `; => pass
     public Stmt newAssignStmt(Assign s) {return s; }
 
-    // if statement
+    // if statement with else
     //: <stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
-    public Stmt newIf(int pos, Exp e, Stmt s1, Stmt s2){
-        if (s2 == null) {
-        s2 = new Block(0, new StmtList()); // empty else block
+    public Stmt newIf(int pos, Exp cond, Stmt trueBranch, Stmt falseBranch){
+        if (falseBranch == null) {
+            falseBranch = new Block(pos, new StmtList()); // empty else block
         }
-        return new If(pos, e, s1, s2);
+        return new If(pos, cond, trueBranch, falseBranch);
     }
+    
 
     // while statment
-    //: <stmt> ::= # `while `( <expr> `) <stmt> =>
-    public Stmt newWhile(int pos, Exp e, Stmt s){
-        return new While(pos, e, s);
+    //: <stmt> ::= `while # `( <expr> `) <stmt> =>
+    public Stmt newWhile(int pos, Exp cond, Stmt s){
+        return new While(pos, cond, s);
+    }
+
+    // "for" loop translated to while loop
+    //: <stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
+    public Stmt newFor(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
+        //body block
+        StmtList loopBody = new StmtList();
+        loopBody.add(body);
+        loopBody.add(step); // i = i + 1
+        
+        While whileLoop = new While(pos, cond, new Block(pos, loopBody));
+
+        //wrap everything in outer block: 
+        StmtList outerList = new StmtList();
+        outerList.add(init); // int i = 0
+        outerList.add(whileLoop);
+        
+        return new Block(pos, outerList);
     }
 
     // empty statement 
@@ -200,14 +227,10 @@ public class MJGrammar implements MessageObject, FilePosObject
     // expressions
     //================================================================
 
-    //: <expr> ::= <expr8> => pass
-    public Exp exprToExpr8(Exp e) { return e; }
-
     // these precedence levels have not been filled in at all, so there
     // are only pass-through productions
 
-    // .length node ArrayLength
-
+    //: <expr> ::= <expr8> => pass
 
     // || node
     //: <expr8> ::= <expr8> # `|| <expr7> =>
@@ -216,7 +239,6 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Or(pos, e1, e2);
     }
     //: <expr8> ::= <expr7> => pass
-    public Exp expr8ToExpr7(Exp e) { return e; }
 
     // && node
     //: <expr7> ::= <expr7> # `&& <expr6> =>
@@ -225,7 +247,6 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new And(pos, e1, e2);
     }
     //: <expr7> ::= <expr6> => pass
-    public Exp expr7ToExpr6(Exp e) { return e; }
 
     // == node
     //: <expr6> ::= <expr6> # `== <expr5> =>
@@ -241,7 +262,6 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Not(pos, new Equals(pos, e1, e2));
     }
     //: <expr6> ::= <expr5> => pass
-    public Exp expr6ToExpr5(Exp e) { return e; }
 
     // <= node
     //: <expr5> ::= <expr5> # `<= <expr4> =>
@@ -276,7 +296,6 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     //: <expr5> ::= <expr4> => pass
-    public Exp expr5ToExpr4(Exp e) { return e; }
 
     // these remaining precedence levels have been filled in to some extent,
     // but most or all of them have need to be expanded
@@ -287,8 +306,14 @@ public class MJGrammar implements MessageObject, FilePosObject
     {
         return new Plus(pos, e1, e2);
     }
+
+    // - node
+    //: <expr4> ::= <expr4> # `- <expr3> =>
+    public Exp newMinus(Exp e1, int pos, Exp e2) {
+        return new Minus(pos, e1, e2);
+    }
+
     //: <expr4> ::= <expr3> => pass
-    public Exp expr4ToExpr3(Exp e) { return e; }
 
     // * node
     //: <expr3> ::= <expr3> # `* <expr2> =>
@@ -310,10 +335,8 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     //: <expr3> ::= <expr2> => pass
-    public Exp expr3ToExpr2(Exp e) { return e; }
 
     //: <expr2> ::= <cast expr> => pass
-    public Exp expr2FromCast(Exp e) { return e; }
 
     //: <cast expr> ::= # `( <type> `) <cast expr> =>
     public Exp newCast(int pos, Type t, Exp e)
@@ -327,9 +350,8 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     //: <expr2> ::= <unary expr> => pass
-    public Exp expr2FromUnary(Exp e) { return e; }
 
-    // logic for -
+    // unary -
     //: <unary expr> ::= # `- <unary expr> =>
     public Exp newUnaryMinus(int pos, Exp e)
     {   // -x transform to 0 - x
@@ -343,7 +365,7 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Plus(pos, new IntLit(pos,0), e);
     }
 
-    // logic for !
+    // unary !
     //: <unary expr> ::= # `! <unary expr> =>
     public Exp newNot(int pos, Exp e)
     {
@@ -351,35 +373,37 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     //: <unary expr> ::= <expr1> => pass
-    public Exp unaryExprToExpr1(Exp e) { return e; }
 
     //: <expr list> ::= =>
-    public ExpList emptyArgs()
-    {
+    public ExpList emptyArgs(){
         return new ExpList();
     }
     
     //: <expr list> ::= <expr> =>
-    public ExpList oneArg(Exp e)
-    {
+    public ExpList oneArg(Exp e){
         ExpList el = new ExpList();
         el.add(e);
         return el;
     }
 
     //: <expr list> ::= <expr list> `, <expr> =>
-    public ExpList moreArgs(ExpList el, Exp e)
-    {
+    public ExpList moreArgs(ExpList el, Exp e){
         el.add(e);
         return el;
     }
 
-    //: <expr1> ::= # ID `( <expr list> `) =>
-    public Exp callSimple(int pos, String name, ExpList el)
-    {
-        return new Call(pos, new IDExp(pos, name), name, el);
+    //method call
+    //: <expr1> ::= <expr1> # `. ID `( <expr list> `) =>
+    public Exp callFull(Exp e, int pos, String name, ExpList el) {
+        return new Call(pos, e, name, el);
     }
 
+    //expression call
+    //: <expr1> ::= # ID `( <expr list> `) =>
+    public Exp callSimple(int pos, String name, ExpList el) {
+        return new Call(pos, new This(pos), name, el);
+    }
+    
     //: <expr1> ::= # ID  =>
     public Exp newIDExp(int pos, String name)
     {
@@ -396,25 +420,51 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new IntLit(pos, n);
     }
 
+    //: <expr1> ::= # `this =>
+    public Exp newThis(int pos) {
+        return new This(pos);
+    }
+
+    // dot (instance variable access)
+    //: <expr1> ::= <expr1> # `. ID =>
+    public Exp newFieldAccess(Exp e, int pos, String name){
+        if(name.equals("length"))
+            return new ArrayLength(pos, e);
+
+        return new FieldAccess(pos, e, name);
+    }
+
+    // new object
+    //: <expr1> ::= # `new ID `( `) =>
+    public Exp newObject(int pos, String name){
+        return new NewObject(pos, new IDType(pos, name));
+    }
+
+    // new array
+    //: <expr1> ::= # `new <type> `[ <expr> `] =>
+    public Exp newArray(int pos, Type t, Exp e){
+        return new NewArray(pos, t, e);
+    }
+
     // empty parameter 
     //: <param list> ::= =>
     public VarDeclList emptyParams() {
         return new VarDeclList();
     }
 
-    // single parameters
+    // single parameter
     //: <param list> ::= <type> # ID =>
     public VarDeclList oneParam(Type t, int pos, String name) {
-        VarDeclList vdl = new VarDeclList();
-        vdl.add(new ParamDecl(pos, t, name));
-        return vdl;
+        VarDeclList params = new VarDeclList();
+        params.add(new ParamDecl(pos, t, name));
+        return params;
     }
 
     // multiple parameters
     //: <param list> ::= <param list> `, <type> # ID =>
-    public VarDeclList moreParams(VarDeclList vdl, Type t, int pos, String name) {
-        vdl.add(new ParamDecl(pos, t, name));
-        return vdl;
+    public VarDeclList moreParams(VarDeclList params, Type t, int pos, String name) {
+        params.add(new ParamDecl(pos, t, name));
+        return params;
     }
 
     //================================================================
