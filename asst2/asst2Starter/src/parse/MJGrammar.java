@@ -91,6 +91,11 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new ClassDecl(pos, name, superName, new DeclList(vec));
     }
 
+    //: <decl in class> ::= <type> # ID `; =>
+    public Decl fieldDecl(Type t, int pos, String name) {
+        return new FieldDecl(pos, t, name);
+    }
+
     //: <decl in class> ::= <method decl> => pass
     //: <delc in class> ::= <field decl> => pass
     
@@ -101,20 +106,18 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     // void functions
-    //: <method decl> ::= `public `void # ID `( `) `{ <stmt>* `} =>
-    public Decl createMethodDeclVoid(int pos, String name, List<Stmt> stmts)
+    //: <method decl> ::= `public `void # ID `( <param list> `) `{ <stmt>* `} =>
+    public Decl createMethodDeclVoid(int pos, String name, VarDeclList params, List<Stmt> stmts)
     {
-        return new MethodDeclVoid(pos, name, new VarDeclList(new VarDeclList()),
-                                  new StmtList(stmts));
+        return new MethodDeclVoid(pos, name, params, new StmtList(stmts));
     }
     
     // non void functions
-    //: <method decl> ::= `public <type> # ID `( `) `{ <stmt>* `return <expr> `; `} =>
-    public Decl createMethodDeclNonVoid(Type t, int pos, String name,
+    //: <method decl> ::= `public <type> # ID `( <param list> `) `{ <stmt>* `return <expr> `; `} =>
+    public Decl createMethodDeclNonVoid(Type t, int pos, String name, VarDeclList params,
                                         List<Stmt> stmts, Exp returnExp)
     {
-        return new MethodDeclNonVoid(pos, t, name, new VarDeclList(new VarDeclList()), 
-                                    new StmtList(stmts), returnExp);
+        return new MethodDeclNonVoid(pos, t, name, params, new StmtList(stmts), returnExp);
     }
 
     //: <type> ::= # `int =>
@@ -232,12 +235,18 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Assign(pos, lhs, rhs);
     }
 
+    // variable declaration with initialization (int x = 0;)
     //: <local var decl> ::= <type> # ID `= <expr> =>
-    public Stmt localVarDecl(Type t, int pos, String name, Exp init)
-    {
+    public Stmt localVarDecl(Type t, int pos, String name, Exp init) {
         return new LocalDeclStmt(pos, new LocalVarDecl(pos, t, name, init));
     }
 
+    // variable declaration (int x;)
+    //: <local var decl> ::= <type> # ID => 
+    public Stmt localVarDeclNoInit(Type t, int pos, String name) {
+        return new LocalDeclStmt(pos, new LocalVarDecl(pos, t, name, null));
+    }
+    
     //================================================================
     // expressions
     //================================================================
