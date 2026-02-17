@@ -147,24 +147,35 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <stmt> ::= <assign> `; => pass
     public Stmt newAssignStmt(Assign s) {return s; }
 
+    // statement call
+    //: <stmt call> ::= # <callExp> `; =>
+    public Stmt newCallStmt(int pos, Call exp){
+        return new CallStmt(pos, exp);
+    }
+    //: <stmt> ::= <stmt call> => pass
+    
     // if statement with else
-    //: <stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
+    //: <if stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
     public Stmt newIf(int pos, Exp cond, Stmt trueBranch, Stmt falseBranch){
-        if (falseBranch == null) {
-            falseBranch = new Block(pos, new StmtList()); // empty else block
-        }
+        // if (falseBranch == null) {
+        //     falseBranch = new Block(pos, new StmtList()); // empty else block
+        // }
         return new If(pos, cond, trueBranch, falseBranch);
     }
-    
-
+    // if without else
+    //: <if stmt> ::= # `if `( <expr> `) <stmt> ! `else =>
+    public Stmt newIf(int pos, Exp cond, Stmt trueBranch){
+        return new If(pos, cond, trueBranch, new Block(pos, new StmtList()));
+    }
+            
     // while statment
-    //: <stmt> ::= `while # `( <expr> `) <stmt> =>
+    //: <while stmt> ::= `while # `( <expr> `) <stmt> =>
     public Stmt newWhile(int pos, Exp cond, Stmt s){
         return new While(pos, cond, s);
     }
 
     // "for" loop translated to while loop
-    //: <stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
+    //: <for stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
     public Stmt newFor(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
         //body block
         StmtList loopBody = new StmtList();
@@ -180,6 +191,10 @@ public class MJGrammar implements MessageObject, FilePosObject
         
         return new Block(pos, outerList);
     }
+
+    //: <stmt> ::= <if stmt> => pass
+    //: <stmt> ::= <while stmt> => pass
+    //: <stmt> ::= <for stmt> => pass
 
     // empty statement 
     //: <stmt> ::= `; =>
@@ -337,6 +352,7 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <expr3> ::= <expr2> => pass
 
     //: <expr2> ::= <cast expr> => pass
+    //: <expr2> ::= <unary expr> => pass
 
     //: <cast expr> ::= # `( <type> `) <cast expr> =>
     public Exp newCast(int pos, Type t, Exp e)
@@ -344,12 +360,6 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Cast(pos, t, e);
     }
     //: <cast expr> ::= # `( <type> `) <expr1> => Exp newCast(int, Type, Exp)
-    public Exp newCastExpr1(int pos, Type t, Exp e)
-    { 
-        return new Cast(pos, t, e); 
-    }
-
-    //: <expr2> ::= <unary expr> => pass
 
     // unary -
     //: <unary expr> ::= # `- <unary expr> =>
@@ -392,15 +402,20 @@ public class MJGrammar implements MessageObject, FilePosObject
         return el;
     }
 
+    //: <expr1> ::= <callExp> =>
+    public Exp callExpToExpr(Call c) {
+        return c;
+    }
+
     //method call
-    //: <expr1> ::= <expr1> # `. ID `( <expr list> `) =>
-    public Exp callFull(Exp e, int pos, String name, ExpList el) {
+    //: <callExp> ::= <expr1> # `. ID `( <expr list> `) =>
+    public Call callFull(Exp e, int pos, String name, ExpList el) {
         return new Call(pos, e, name, el);
     }
 
     //expression call
-    //: <expr1> ::= # ID `( <expr list> `) =>
-    public Exp callSimple(int pos, String name, ExpList el) {
+    //: <callExp> ::= # ID `( <expr list> `) =>
+    public Call callSimple(int pos, String name, ExpList el) {
         return new Call(pos, new This(pos), name, el);
     }
     
@@ -423,6 +438,11 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <expr1> ::= # `this =>
     public Exp newThis(int pos) {
         return new This(pos);
+    }
+
+    //: <expr1> ::= # `super =>
+    public Exp newSuper(int pos){
+        return new Super(pos);
     }
 
     // dot (instance variable access)
