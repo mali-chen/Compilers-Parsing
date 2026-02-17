@@ -84,7 +84,15 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     //: <decl in class> ::= <method decl> => pass
+    //: <delc in class> ::= <field decl> => pass
+    
+    // field declarations
+    //: <field decl> ::= <type> # ID `; =>
+    public Decl createFieldDecl(Type t, int pos, String name){
+        return new FieldDecl(pos, t, name);
+    }
 
+    // void functions
     //: <method decl> ::= `public `void # ID `( `) `{ <stmt>* `} =>
     public Decl createMethodDeclVoid(int pos, String name, List<Stmt> stmts)
     {
@@ -92,6 +100,14 @@ public class MJGrammar implements MessageObject, FilePosObject
                                   new StmtList(stmts));
     }
     
+    // non void functions
+    //: <method decl> ::= `public <type> # ID `( `) `{ <stmt>* `return <expr> `; `} =>
+    public Decl createMethodDeclNonVoid(Type t, int pos, String name,
+                                        List<Stmt> stmts, Exp returnExp)
+    {
+        return new MethodDeclNonVoid(pos, t, name, new VarDeclList(new VarDeclList()), 
+                                    new StmtList(stmts), returnExp);
+    }
 
     //: <type> ::= # `int =>
     public Type intType(int pos)
@@ -126,6 +142,9 @@ public class MJGrammar implements MessageObject, FilePosObject
     // if statement
     //: <stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
     public Stmt newIf(int pos, Exp e, Stmt s1, Stmt s2){
+        if (s2 == null) {
+        s2 = new Block(0, new StmtList()); // empty else block
+        }
         return new If(pos, e, s1, s2);
     }
 
@@ -149,6 +168,22 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <stmt> ::= <local var decl> `; => pass
     public Stmt stmtLocal(LocalDeclStmt l) { return l; }
 
+    // increment ++
+    //: <stmt> ::= # ID `++ `; => 
+    public Stmt stmtIncrement(int pos, String name) {
+        Exp var = new IDExp(pos, name);       
+        Exp rhs = new Plus(pos, var, new IntLit(pos, 1)); // x + 1
+        return new Assign(pos, var, rhs); // x = x + 1
+    }
+
+    // decrement -- 
+    //: <stmt> ::= # ID `-- `; => 
+    public Stmt stmtDecrement(int pos, String name) {
+        Exp var = new IDExp(pos, name);       
+        Exp rhs = new Minus(pos, var, new IntLit(pos, 1)); // x - 1
+        return new Assign(pos, var, rhs); // x = x - 1
+    }
+
     //: <assign> ::= <expr> # `= <expr> =>
     public Stmt assign(Exp lhs, int pos, Exp rhs)
     {
@@ -171,6 +206,10 @@ public class MJGrammar implements MessageObject, FilePosObject
     // these precedence levels have not been filled in at all, so there
     // are only pass-through productions
 
+    // .length node ArrayLength
+
+
+    // || node
     //: <expr8> ::= <expr8> # `|| <expr7> =>
     public Exp newOr(Exp e1, int pos, Exp e2)
     {
@@ -195,20 +234,47 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Equals(pos, e1, e2);
     }
 
-    // != node (modified for minijava)
+    // != node 
     //: <expr6> ::= <expr6> # `!= <expr5> =>
-    public Exp newNotEquals(Exp e1, int pos, Exp e2)
-    {
-    return new Not(pos, new Equals(pos, e1, e2));
+    public Exp newNotEquals(Exp e1, int pos, Exp e2){
+        // transform a != b into !(a == b)
+        return new Not(pos, new Equals(pos, e1, e2));
     }
     //: <expr6> ::= <expr5> => pass
     public Exp expr6ToExpr5(Exp e) { return e; }
+
+    // <= node
+    //: <expr5> ::= <expr5> # `<= <expr4> =>
+    public Exp newNotLessThan(Exp e1, int pos, Exp e2){
+        // transform a <= b into !(a > b)
+        return new Not(pos, new GreaterThan(pos, e1, e2)); 
+    }
+
+    // >= node
+    //: <expr5> ::= <expr5> # `>= <expr4> =>
+    public Exp newNotGreaterThan(Exp e1, int pos, Exp e2){
+        // transform a >= b into !(a < b)
+        return new Not(pos, new LessThan(pos, e1, e2));
+    }
 
     // < node
     //: <expr5> ::= <expr5> # `< <expr4> =>
     public Exp newLess(Exp e1, int pos, Exp e2){
         return new LessThan(pos, e1, e2);
     }
+
+    // > node
+    //: <expr5> ::= <expr5> # `> <expr4> =>
+    public Exp newGreater(Exp e1, int pos, Exp e2){
+        return new GreaterThan(pos, e1, e2);
+    }
+
+    // instanceof
+    //: <expr5> ::= <expr5> #  `instanceof <type> =>
+    public Exp newInstanceOf(Exp e, int pos, Type t){
+        return new InstanceOf(pos, e, t);
+    }
+
     //: <expr5> ::= <expr4> => pass
     public Exp expr5ToExpr4(Exp e) { return e; }
 
@@ -230,13 +296,24 @@ public class MJGrammar implements MessageObject, FilePosObject
     {
         return new Times(pos, e1, e2);
     }
+
+    // / node
+    //: <expr3> ::= <expr3> # `/ <expr2> =>
+    public Exp newDivde(Exp e1, int pos, Exp e2){
+        return new Divide(pos, e1, e2);
+    }
+
+    // % node
+    //: <expr3> ::= <expr3> # `% <expr2> =>
+    public Exp newRemainder(Exp e1, int pos, Exp e2){
+        return new Remainder(pos, e1, e2);
+    }
+
     //: <expr3> ::= <expr2> => pass
     public Exp expr3ToExpr2(Exp e) { return e; }
 
     //: <expr2> ::= <cast expr> => pass
     public Exp expr2FromCast(Exp e) { return e; }
-    //: <expr2> ::= <unary expr> => pass
-    public Exp expr2FromUnary(Exp e) { return e; }
 
     //: <cast expr> ::= # `( <type> `) <cast expr> =>
     public Exp newCast(int pos, Type t, Exp e)
@@ -249,11 +326,21 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Cast(pos, t, e); 
     }
 
+    //: <expr2> ::= <unary expr> => pass
+    public Exp expr2FromUnary(Exp e) { return e; }
+
     // logic for -
     //: <unary expr> ::= # `- <unary expr> =>
     public Exp newUnaryMinus(int pos, Exp e)
-    {
+    {   // -x transform to 0 - x
         return new Minus(pos, new IntLit(pos, 0), e);
+    }
+
+    // unary +
+    //: <unary expr> ::= # `+ <unary expr> =>
+    public Exp newUnaryPlus(int pos, Exp e)
+    {   // +x transform to 0 + x
+        return new Plus(pos, new IntLit(pos,0), e);
     }
 
     // logic for !
@@ -261,13 +348,6 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Exp newNot(int pos, Exp e)
     {
         return new Not(pos, e);
-    }
-
-    // unary +
-    //: <unary expr> ::= # `+ <unary expr> =>
-    public Exp newUnaryPlus(int pos, Exp e)
-    {
-        return new Plus(pos, new IntLit(pos,0), e);
     }
 
     //: <unary expr> ::= <expr1> => pass
@@ -314,6 +394,27 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Exp newIntLit(int pos, int n)
     {
         return new IntLit(pos, n);
+    }
+
+    // empty parameter 
+    //: <param list> ::= =>
+    public VarDeclList emptyParams() {
+        return new VarDeclList();
+    }
+
+    // single parameters
+    //: <param list> ::= <type> # ID =>
+    public VarDeclList oneParam(Type t, int pos, String name) {
+        VarDeclList vdl = new VarDeclList();
+        vdl.add(new ParamDecl(pos, t, name));
+        return vdl;
+    }
+
+    // multiple parameters
+    //: <param list> ::= <param list> `, <type> # ID =>
+    public VarDeclList moreParams(VarDeclList vdl, Type t, int pos, String name) {
+        vdl.add(new ParamDecl(pos, t, name));
+        return vdl;
     }
 
     //================================================================
@@ -420,7 +521,8 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: CHARLIT ::= "'" any ws* =>
     public int charVal(char x, char val)
     {
-        return val;
+        // treat all character literal as ints with their ASCII value
+        return (int) val;
     }
 
     //: idChar ::= letter => pass
