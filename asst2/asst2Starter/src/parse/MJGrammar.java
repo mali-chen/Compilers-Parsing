@@ -91,6 +91,7 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new MethodDeclVoid(pos, name, new VarDeclList(new VarDeclList()),
                                   new StmtList(stmts));
     }
+    
 
     //: <type> ::= # `int =>
     public Type intType(int pos)
@@ -120,16 +121,21 @@ public class MJGrammar implements MessageObject, FilePosObject
     //================================================================
 
     //: <stmt> ::= <assign> `; => pass
+    public Stmt newAssignStmt(Assign s) {return s; }
+
+    // if statement
     //: <stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
     public Stmt newIf(int pos, Exp e, Stmt s1, Stmt s2){
         return new If(pos, e, s1, s2);
     }
 
+    // while statment
     //: <stmt> ::= # `while `( <expr> `) <stmt> =>
     public Stmt newWhile(int pos, Exp e, Stmt s){
         return new While(pos, e, s);
     }
 
+    // empty statement 
     //: <stmt> ::= `; =>
     public Stmt emptyStmt(){
         return new Block(0, new StmtList());
@@ -141,6 +147,7 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Block(pos, new StmtList(sl));
     }
     //: <stmt> ::= <local var decl> `; => pass
+    public Stmt stmtLocal(LocalDeclStmt l) { return l; }
 
     //: <assign> ::= <expr> # `= <expr> =>
     public Stmt assign(Exp lhs, int pos, Exp rhs)
@@ -159,59 +166,77 @@ public class MJGrammar implements MessageObject, FilePosObject
     //================================================================
 
     //: <expr> ::= <expr8> => pass
+    public Exp exprToExpr8(Exp e) { return e; }
 
     // these precedence levels have not been filled in at all, so there
     // are only pass-through productions
-    //: <expr7> ::= <expr7> # `&& <expr6> =>
-    public Exp newAnd(Exp e1, int pos, Exp e2)
-    {
-        return new And(pos, e1, e2);
-    }
-
-    //: <expr7> ::= <expr6> => pass
 
     //: <expr8> ::= <expr8> # `|| <expr7> =>
     public Exp newOr(Exp e1, int pos, Exp e2)
     {
         return new Or(pos, e1, e2);
     }
-
     //: <expr8> ::= <expr7> => pass
-    //: <expr6> ::= <expr5> => pass
+    public Exp expr8ToExpr7(Exp e) { return e; }
+
+    // && node
+    //: <expr7> ::= <expr7> # `&& <expr6> =>
+    public Exp newAnd(Exp e1, int pos, Exp e2)
+    {
+        return new And(pos, e1, e2);
+    }
+    //: <expr7> ::= <expr6> => pass
+    public Exp expr7ToExpr6(Exp e) { return e; }
+
+    // == node
     //: <expr6> ::= <expr6> # `== <expr5> =>
     public Exp newEquals(Exp e1, int pos, Exp e2)
     {
         return new Equals(pos, e1, e2);
     }
 
+    // != node (modified for minijava)
+    //: <expr6> ::= <expr6> # `!= <expr5> =>
+    public Exp newNotEquals(Exp e1, int pos, Exp e2)
+    {
+    return new Not(pos, new Equals(pos, e1, e2));
+    }
     //: <expr6> ::= <expr5> => pass
+    public Exp expr6ToExpr5(Exp e) { return e; }
 
+    // < node
     //: <expr5> ::= <expr5> # `< <expr4> =>
     public Exp newLess(Exp e1, int pos, Exp e2){
         return new LessThan(pos, e1, e2);
     }
-
     //: <expr5> ::= <expr4> => pass
+    public Exp expr5ToExpr4(Exp e) { return e; }
 
     // these remaining precedence levels have been filled in to some extent,
     // but most or all of them have need to be expanded
 
+    // + node
     //: <expr4> ::= <expr4> # `+ <expr3> =>
     public Exp newPlus(Exp e1, int pos, Exp e2)
     {
         return new Plus(pos, e1, e2);
     }
     //: <expr4> ::= <expr3> => pass
+    public Exp expr4ToExpr3(Exp e) { return e; }
 
+    // * node
     //: <expr3> ::= <expr3> # `* <expr2> =>
     public Exp newTimes(Exp e1, int pos, Exp e2)
     {
         return new Times(pos, e1, e2);
     }
     //: <expr3> ::= <expr2> => pass
+    public Exp expr3ToExpr2(Exp e) { return e; }
 
     //: <expr2> ::= <cast expr> => pass
+    public Exp expr2FromCast(Exp e) { return e; }
     //: <expr2> ::= <unary expr> => pass
+    public Exp expr2FromUnary(Exp e) { return e; }
 
     //: <cast expr> ::= # `( <type> `) <cast expr> =>
     public Exp newCast(int pos, Type t, Exp e)
@@ -219,13 +244,61 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Cast(pos, t, e);
     }
     //: <cast expr> ::= # `( <type> `) <expr1> => Exp newCast(int, Type, Exp)
+    public Exp newCastExpr1(int pos, Type t, Exp e)
+    { 
+        return new Cast(pos, t, e); 
+    }
 
+    // logic for -
     //: <unary expr> ::= # `- <unary expr> =>
     public Exp newUnaryMinus(int pos, Exp e)
     {
         return new Minus(pos, new IntLit(pos, 0), e);
     }
+
+    // logic for !
+    //: <unary expr> ::= # `! <unary expr> =>
+    public Exp newNot(int pos, Exp e)
+    {
+        return new Not(pos, e);
+    }
+
+    // unary +
+    //: <unary expr> ::= # `+ <unary expr> =>
+    public Exp newUnaryPlus(int pos, Exp e)
+    {
+        return new Plus(pos, new IntLit(pos,0), e);
+    }
+
     //: <unary expr> ::= <expr1> => pass
+    public Exp unaryExprToExpr1(Exp e) { return e; }
+
+    //: <expr list> ::= =>
+    public ExpList emptyArgs()
+    {
+        return new ExpList();
+    }
+    
+    //: <expr list> ::= <expr> =>
+    public ExpList oneArg(Exp e)
+    {
+        ExpList el = new ExpList();
+        el.add(e);
+        return el;
+    }
+
+    //: <expr list> ::= <expr list> `, <expr> =>
+    public ExpList moreArgs(ExpList el, Exp e)
+    {
+        el.add(e);
+        return el;
+    }
+
+    //: <expr1> ::= # ID `( <expr list> `) =>
+    public Exp callSimple(int pos, String name, ExpList el)
+    {
+        return new Call(pos, new IDExp(pos, name), name, el);
+    }
 
     //: <expr1> ::= # ID  =>
     public Exp newIDExp(int pos, String name)
