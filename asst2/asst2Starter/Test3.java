@@ -1,8 +1,8 @@
 class DeclTest{
     public void main(){
-        boolean isAvailable = true;
-        boolean hasPermission = false;
-
+        if(a > b){
+            int x = 4;
+        } 
         
     }
 }
