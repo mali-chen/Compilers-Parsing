@@ -175,12 +175,14 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Stmt newIf(int pos, Exp cond, Stmt trueBranch){
         return new If(pos, cond, trueBranch, new Block(pos, new StmtList()));
     }
-            
+    //: <stmt> ::= <if stmt> => pass
+
     // while statment
     //: <while stmt> ::= `while # `( <expr> `) <stmt> =>
     public Stmt newWhile(int pos, Exp cond, Stmt s){
         return new While(pos, cond, s);
     }
+    //: <stmt> ::= <while stmt> => pass
 
     // "for" loop translated to while loop
     //: <for stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
@@ -199,9 +201,6 @@ public class MJGrammar implements MessageObject, FilePosObject
         
         return new Block(pos, outerList);
     }
-
-    //: <stmt> ::= <if stmt> => pass
-    //: <stmt> ::= <while stmt> => pass
     //: <stmt> ::= <for stmt> => pass
 
     // empty statement 
@@ -609,11 +608,12 @@ public class MJGrammar implements MessageObject, FilePosObject
         return "";
     }
     //: STRINGLIT ::= '"' any* any128 ws* =>
-    public String string(char quote1, List<Character> mid, char quote2) {
+    public String string(char quote1, List<Character> mid, char last) {
         StringBuilder sb = new StringBuilder();
         for (Character c : mid) {
             sb.append(c);
         }
+        sb.append(last);
         return sb.toString();
     }
     //: CHARLIT ::= "'" any ws* =>
