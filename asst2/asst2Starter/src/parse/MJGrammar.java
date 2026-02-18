@@ -187,21 +187,32 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     // "for" loop translated to while loop
-    //: <stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
-    public Stmt newFor(int pos, Stmt decl, Exp cond, Stmt step, Stmt body) {
-        //body block
-        StmtList loopBody = new StmtList();
-        loopBody.add(body);
-        loopBody.add(step); // i = i + 1
-        
-        While whileLoop = new While(pos, cond, new Block(pos, loopBody));
+    // for (int i = 0; ...)
+    //: <stmt> ::= `for # `( <local var decl> `; <expr> `; <assign> `) <stmt> => 
+    public Stmt newForDecl(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
+        return newFor(pos, init, cond, step, body);
+    }
 
-        //wrap everything in outer block: 
-        StmtList outerList = new StmtList();
-        outerList.add(decl); // int i = 0
-        outerList.add(whileLoop);
+    // for (i = 0; ...) 
+    //: <stmt> ::= `for # `( <assign> `; <expr8> `; <assign> `) <stmt> => 
+    public Stmt newForAssign(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
+        return newFor(pos, init, cond, step, body);
+    }
+
+    // shared logic for both loops
+    public Stmt newFor(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
+        // list for the loop's contents
+        java.util.ArrayList<Stmt> inner = new java.util.ArrayList<>();
+        inner.add(body); 
+        inner.add(step); // update counter
         
-        return new Block(pos, outerList);
+        While loop = new While(pos, cond, new Block(pos, new StmtList(inner)));
+
+        java.util.ArrayList<Stmt> outer = new java.util.ArrayList<>();
+        outer.add(init); // runs once before looping
+        outer.add(loop); // iterate
+
+        return new Block(pos, new StmtList(outer));
     }
 
     public Stmt stmtLocal(LocalDeclStmt l) { return l; }
@@ -222,19 +233,19 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Stmt newBreak(int pos) {
         return new Break(pos);
     }
-    
+
     // increment ++
-    //: <stmt> ::= # ID `++ `; => 
-    public Stmt stmtIncrement(int pos, String name) {
-        Exp var = new IDExp(pos, name);       
-        Exp rhs = new Plus(pos, var, new IntLit(pos, 1)); // x + 1
+    //: <assign> ::= # ID `++ => 
+    public Stmt assignIncrement(int pos, String name) {
+        Exp var = new IDExp(pos, name); // x      
+        Exp rhs = new Plus(pos, var, new IntLit(pos, 1));  // x + 1
         return new Assign(pos, var, rhs); // x = x + 1
     }
 
     // decrement -- 
-    //: <stmt> ::= # ID `-- `; => 
-    public Stmt stmtDecrement(int pos, String name) {
-        Exp var = new IDExp(pos, name);       
+    //: <assign> ::= # ID `-- => 
+    public Stmt assignDecrement(int pos, String name) {
+        Exp var = new IDExp(pos, name); // x
         Exp rhs = new Minus(pos, var, new IntLit(pos, 1)); // x - 1
         return new Assign(pos, var, rhs); // x = x - 1
     }
@@ -494,6 +505,15 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Exp newArray(int pos, Type t, Exp e){
         return new NewArray(pos, t, e);
     }
+    
+    //: <expr1> ::= # `true =>
+    public Exp newTrue(int pos) { return new True(pos); }
+
+    //: <expr1> ::= # `false =>
+    public Exp newFalse(int pos) { return new False(pos); }
+
+    //: <expr1> ::= # `null =>
+    public Exp newNull(int pos) { return new Null(pos); }
 
     // empty parameter 
     //: <param list> ::= =>
