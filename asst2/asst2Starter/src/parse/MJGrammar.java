@@ -171,17 +171,19 @@ public class MJGrammar implements MessageObject, FilePosObject
     // if statement with else
     //: <stmt> ::= `if # `( <expr> `) <stmt> `else <stmt> =>
     public Stmt newIf(int pos, Exp cond, Stmt trueBranch, Stmt falseBranch){
-
         return new If(pos, cond, trueBranch, falseBranch);
     }
 
-    // while statement
+    // while statment
+    //: <stmt> ::= !`do `while # `( <expr> `) <stmt> =>
+    public Stmt newWhile(int pos, Exp cond, Stmt s){
+        return new While(pos, cond, s);
+    }
+
+    // do while statement 
     //: <stmt> ::= `do # <stmt> `while `( <expr> `) `; =>
-    public Stmt newWhile(int pos, Stmt body, Exp cond){
-        java.util.ArrayList<Stmt> lst = new java.util.ArrayList<>();
-        lst.add(body);
-        lst.add( new While(pos, cond, body));
-        return new Block(pos, new StmtList(lst));
+    public Stmt newDoWhile(int pos, Stmt body, Exp cond){
+        return new While(pos, cond, body);
     }
 
     // "for" loop translated to while loop
@@ -209,7 +211,7 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Block(pos,new StmtList(s1));
     }
     //: <stmt> ::= <local var decl> `; => pass
-    
+
     // empty statement 
     //: <stmt> ::= # `; =>
     public Stmt emptyStmt(int pos){
