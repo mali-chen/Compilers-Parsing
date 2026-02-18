@@ -495,6 +495,17 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new NewArray(pos, t, e);
     }
 
+    //: <expr1> ::= `( <expr> `) => pass
+    
+    //: <expr1> ::= # `true =>
+    public Exp newTrue(int pos) { return new True(pos); }
+
+    //: <expr1> ::= # `false =>
+    public Exp newFalse(int pos) { return new False(pos); }
+
+    //: <expr1> ::= # `null =>
+    public Exp newNull(int pos) { return new Null(pos); }
+
     // empty parameter 
     //: <param list> ::= =>
     public VarDeclList emptyParams() {
