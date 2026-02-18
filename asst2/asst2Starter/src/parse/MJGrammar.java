@@ -161,32 +161,32 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new CallStmt(pos, exp);
     }
     //: <stmt> ::= <stmt call> => pass
-    
+
+    // if without else
+    //: <stmt> ::= `if # `( <expr> `) <stmt> !`else =>
+    public Stmt newIf(int pos, Exp cond, Stmt thenBranch){
+        return new If(pos, cond, thenBranch, new Block(pos, new StmtList()));
+    }
+
     // if statement with else
-    //: <if stmt> ::= # `if `( <expr> `) <stmt> `else <stmt> =>
+    //: <stmt> ::= `if # `( <expr> `) <stmt> `else <stmt> =>
     public Stmt newIf(int pos, Exp cond, Stmt trueBranch, Stmt falseBranch){
-        // if (falseBranch == null) {
-        //     falseBranch = new Block(pos, new StmtList()); // empty else block
-        // }
+
         return new If(pos, cond, trueBranch, falseBranch);
     }
-    // if without else
-    //: <if stmt> ::= # `if `( <expr> `) <stmt> ! `else =>
-    public Stmt newIf(int pos, Exp cond, Stmt trueBranch){
-        return new If(pos, cond, trueBranch, new Block(pos, new StmtList()));
-    }
-    //: <stmt> ::= <if stmt> => pass
 
-    // while statment
-    //: <while stmt> ::= `while # `( <expr> `) <stmt> =>
-    public Stmt newWhile(int pos, Exp cond, Stmt s){
-        return new While(pos, cond, s);
+    // while statement
+    //: <stmt> ::= `do # <stmt> `while `( <expr> `) `; =>
+    public Stmt newWhile(int pos, Stmt body, Exp cond){
+        java.util.ArrayList<Stmt> lst = new java.util.ArrayList<>();
+        lst.add(body);
+        lst.add( new While(pos, cond, body));
+        return new Block(pos, new StmtList(lst));
     }
-    //: <stmt> ::= <while stmt> => pass
 
     // "for" loop translated to while loop
-    //: <for stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
-    public Stmt newFor(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
+    //: <stmt> ::= # `for `( <assign> `; <expr> `; <assign> `) <stmt> =>
+    public Stmt newFor(int pos, Stmt decl, Exp cond, Stmt step, Stmt body) {
         //body block
         StmtList loopBody = new StmtList();
         loopBody.add(body);
@@ -196,27 +196,31 @@ public class MJGrammar implements MessageObject, FilePosObject
 
         //wrap everything in outer block: 
         StmtList outerList = new StmtList();
-        outerList.add(init); // int i = 0
+        outerList.add(decl); // int i = 0
         outerList.add(whileLoop);
         
         return new Block(pos, outerList);
     }
-    //: <stmt> ::= <for stmt> => pass
 
-    // empty statement 
-    //: <stmt> ::= `; =>
-    public Stmt emptyStmt(){
-        return new Block(0, new StmtList());
-    }
-
-    //: <stmt> ::= # `{ <stmt>* `} =>
-    public Stmt newBlock(int pos, List<Stmt> sl)
-    {
-        return new Block(pos, new StmtList(sl));
-    }
-    //: <stmt> ::= <local var decl> `; => pass
     public Stmt stmtLocal(LocalDeclStmt l) { return l; }
 
+    //: <stmt> ::= # `{ <stmt>* `} =>
+    public Stmt newBlock(int pos, List<Stmt> s1){
+        return new Block(pos,new StmtList(s1));
+    }
+    //: <stmt> ::= <local var decl> `; => pass
+    
+    // empty statement 
+    //: <stmt> ::= # `; =>
+    public Stmt emptyStmt(int pos){
+        return new Block(pos, new StmtList());
+    }
+
+    //: <stmt> ::= # `break `; =>
+    public Stmt newBreak(int pos) {
+        return new Break(pos);
+    }
+    
     // increment ++
     //: <stmt> ::= # ID `++ `; => 
     public Stmt stmtIncrement(int pos, String name) {
