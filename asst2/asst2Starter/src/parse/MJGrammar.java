@@ -194,7 +194,7 @@ public class MJGrammar implements MessageObject, FilePosObject
     }
 
     // for (i = 0; ...) 
-    //: <stmt> ::= `for # `( <assign> `; <expr8> `; <assign> `) <stmt> => 
+    //: <stmt> ::= `for # `( <assign> `; <expr> `; <assign> `) <stmt> => 
     public Stmt newForAssign(int pos, Stmt init, Exp cond, Stmt step, Stmt body) {
         return newFor(pos, init, cond, step, body);
     }
@@ -232,6 +232,21 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: <stmt> ::= # `break `; =>
     public Stmt newBreak(int pos) {
         return new Break(pos);
+    }
+
+    //: <stmt> ::= `switch # `( <expr> `) `{ <stmt>* `} =>
+    public Stmt newSwitch(int pos, Exp e, List<Stmt> stmts){
+        return new Switch(pos, e, new StmtList(stmts));
+    }
+
+    //: <stmt> ::= `case # <expr> `: =>
+    public Stmt newCase(int pos, Exp e){
+        return new Case(pos, e);
+    }
+
+    //: <stmt> ::= `default # `: =>
+    public Stmt newDefault(int pos){
+        return new Default(pos);
     }
 
     // increment ++
@@ -505,7 +520,7 @@ public class MJGrammar implements MessageObject, FilePosObject
     public Exp newArray(int pos, Type t, Exp e){
         return new NewArray(pos, t, e);
     }
-    
+
     //: <expr1> ::= # `true =>
     public Exp newTrue(int pos) { return new True(pos); }
 
@@ -514,7 +529,7 @@ public class MJGrammar implements MessageObject, FilePosObject
 
     //: <expr1> ::= # `null =>
     public Exp newNull(int pos) { return new Null(pos); }
-
+    
     // empty parameter 
     //: <param list> ::= =>
     public VarDeclList emptyParams() {
