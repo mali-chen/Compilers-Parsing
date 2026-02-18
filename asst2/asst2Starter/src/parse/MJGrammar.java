@@ -125,6 +125,11 @@ public class MJGrammar implements MessageObject, FilePosObject
     {
         return new IntType(pos);
     }
+    //: <type> ::= # `char => 
+     public Type charType(int pos) 
+    { 
+        return new IntType(pos); 
+    }
     //: <type> ::= # `boolean =>
     public Type booleanType(int pos)
     {
@@ -454,6 +459,16 @@ public class MJGrammar implements MessageObject, FilePosObject
         return new Super(pos);
     }
 
+    //: <expr1> ::= # STRINGLIT =>
+    public Exp newStringLit(int pos, String s) {
+        return new StringLit(pos, s);
+    }
+
+    //: <expr1> ::= # CHARLIT =>
+    public Exp newCharExp(int pos, int value) {
+        return new IntLit(pos, value);
+    }
+
     // dot (instance variable access)
     //: <expr1> ::= <expr1> # `. ID =>
     public Exp newFieldAccess(Exp e, int pos, String name){
@@ -521,6 +536,7 @@ public class MJGrammar implements MessageObject, FilePosObject
     //: `extends ::= "#ex" ws*
     //: `void ::= "#vo" ws*
     //: `int ::= "#it" ws*
+    //: `char ::= "#ch" ws*
     //: `while ::= "#wh" ws*
     //: `if ::= '#+' ws*
     //: `else ::= "#el" ws*
@@ -593,14 +609,16 @@ public class MJGrammar implements MessageObject, FilePosObject
         return "";
     }
     //: STRINGLIT ::= '"' any* any128 ws* =>
-    public String string(char x, List<Character> mid, char last)
-    {
-        return ""+mid+last;
+    public String string(char quote1, List<Character> mid, char quote2) {
+        StringBuilder sb = new StringBuilder();
+        for (Character c : mid) {
+            sb.append(c);
+        }
+        return sb.toString();
     }
     //: CHARLIT ::= "'" any ws* =>
     public int charVal(char x, char val)
     {
-        // treat all character literal as ints with their ASCII value
         return (int) val;
     }
 
